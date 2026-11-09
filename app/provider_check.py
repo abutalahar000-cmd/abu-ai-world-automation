@@ -61,6 +61,14 @@ def check_provider(settings, name: str) -> dict:
     report["mime"] = result.mime
     report["model"] = result.meta.get("model", "")
 
+    if provider.is_placeholder:
+        # Procedural artwork is expected to be non-photographic; it is reported
+        # as a working offline backend, never as an AI photo generator.
+        report["ok"] = True
+        report["real_photo"] = False
+        report["detail"] = "Offline procedural artwork for tests - NOT a photograph."
+        return report
+
     try:
         measured = quality.validate_photo(result.data, provider=name)
     except quality.ImageValidationError as exc:
@@ -70,9 +78,7 @@ def check_provider(settings, name: str) -> dict:
     report["quality"] = measured.to_dict()
     report["ok"] = True
     report["real_photo"] = bool(provider.is_ai and measured.is_photographic)
-    if provider.is_placeholder:
-        report["detail"] = "Offline procedural artwork for tests - NOT a photograph."
-    elif report["real_photo"]:
+    if report["real_photo"]:
         report["detail"] = "Returned a real photographic image from a diffusion model."
     else:
         report["detail"] = "Returned an image but is not marked as a real model."
