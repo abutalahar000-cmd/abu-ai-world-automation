@@ -45,6 +45,12 @@ every time** from random attribute pools.
   logs or dashboard.
 - **Free providers** — Pollinations (no key), Hugging Face free tier, self-hosted Stable Diffusion,
   and an offline placeholder so the pipeline works without network access.
+- **Photographic quality gate** — every image from an AI provider is decoded and measured (detail,
+  entropy, colour spread) so a blank, flat or HTML error response is rejected instead of stored.
+- **Facebook dry run** — `publish --dry-run` builds and validates the Graph API request without
+  sending it, so the integration can be checked before anything is published.
+- **Provider verification** — `verify-providers` calls each backend once and reports what actually
+  works, rather than inferring availability from settings.
 
 ---
 
@@ -63,6 +69,14 @@ python -m app.cli list --status pending
 python -m app.cli serve       # http://127.0.0.1:8000
 ```
 
+Check what the image backends can actually do right now (one call each):
+
+```bash
+python -m app.cli verify-providers
+python3 scripts/verify_live.py            # live run, 5 categories
+python3 scripts/verify_live.py --placeholder   # same pipeline, no network
+```
+
 No credentials are required to generate and review photos. The default provider chain produces
 real images with Pollinations and falls back to a clearly labelled offline placeholder if the network
 is unavailable.
@@ -78,12 +92,12 @@ All settings come from environment variables (a git-ignored `.env` is supported)
 | --- | --- | --- |
 | `FB_PAGE_ID` | only to publish | Facebook Page ID |
 | `FB_PAGE_ACCESS_TOKEN` | only to publish | Page access token with `pages_manage_posts` |
-| `GRAPH_API_VERSION` | no | Graph API version (default `v21.0`) |
-| `IMAGE_PROVIDER` | no | `pollinations` (default), `huggingface`, `local_sd`, `placeholder` |
+| `GRAPH_API_VERSION` | no | Graph API version (default `v23.0`) |
+| `IMAGE_PROVIDER` | no | `pollinations` (default), `huggingface`, `local`, `placeholder` |
 | `FALLBACK_PROVIDER` | no | Used when the primary provider fails |
 | `HF_TOKEN` | no | Free Hugging Face token, only for the `huggingface` provider |
 | `POLLINATIONS_TOKEN` | no | Optional free token to raise rate limits |
-| `LOCAL_SD_URL` | no | Your own AUTOMATIC1111/Forge endpoint for `local_sd` |
+| `LOCAL_SD_URL` | no | Your own AUTOMATIC1111/Forge endpoint for `local` |
 | `REQUIRE_APPROVAL` | no | Default `true` — keep this on for manual approval |
 | `AUTO_PUBLISH` | no | Default `false` — publishing stays off until you enable it |
 | `DASHBOARD_PASSWORD` | no | Protects the review dashboard with HTTP Basic auth |
@@ -144,11 +158,14 @@ python -m app.cli schedule            # generates on an interval, never bypasses
 ## Tests
 
 ```bash
-pytest          # 35 tests: blueprints, captions, dedupe, pipeline, approval gate, dashboard
+pytest          # 48 tests: blueprints, captions, dedupe, quality gate, pipeline, approval gate,
+                #            Facebook dry run, provider fallback, dashboard
 ruff check .    # lint
 ```
 
-Tests run fully offline against the placeholder provider and a temporary database.
+Tests run fully offline against the placeholder provider and a temporary database. What was actually
+executed — including which providers were reachable — is recorded in
+[`docs/VERIFICATION.md`](docs/VERIFICATION.md).
 
 ---
 
@@ -161,6 +178,8 @@ app/
   randomizer.py    uniqueness-aware blueprint sampling
   captioner.py     unique titles, captions, hashtags
   dedupe.py        SHA-256 + perceptual hashes
+  quality.py       photographic quality gate (decode, detail, entropy)
+  provider_check.py one-call availability checks per provider
   storage.py       SQLite posts, signatures, events
   generator.py     generation pipeline
   publisher.py     approval gate + publish rules
@@ -170,7 +189,9 @@ app/
   web.py           Flask review dashboard
   providers/       pollinations, huggingface, local_sd, placeholder
 tests/             pytest suite
+scripts/verify_live.py   live 5-category verification run
 docs/PLAN.md       migration + implementation plan
+docs/VERIFICATION.md     what was tested, what needs credentials
 ```
 
 ---
@@ -180,5 +201,8 @@ docs/PLAN.md       migration + implementation plan
 - AI-generated images are labelled as such in every caption. Keep that disclosure — it is required
   by Meta's synthetic-content policy for realistic AI imagery.
 - Free provider quotas can change. If generation fails, the fallback provider or the offline
-  placeholder is used and the reason is recorded in the event log.
+  placeholder is used and the reason is recorded in the event log. Pollinations returned HTTP
+  402/503 during the last verification run; set `POLLINATIONS_TOKEN`, `HF_TOKEN` or `LOCAL_SD_URL`
+  to enable real AI photos, then confirm with `python -m app.cli verify-providers`.
+- The placeholder is labelled `is_placeholder` everywhere and is never reported as an AI image.
 - This repository is source code only: no deployment is configured, and no credentials are included.
