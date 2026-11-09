@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import random
+import sqlite3
 from io import BytesIO
 from pathlib import Path
 
@@ -81,7 +82,7 @@ def test_duplicate_photo_is_rejected(store, settings, monkeypatch):
 
 def test_same_blueprint_cannot_be_stored_twice(store, settings):
     post = generator.generate_post(store, settings, rng=random.Random(9))
-    with pytest.raises(Exception):
+    with pytest.raises(sqlite3.IntegrityError):
         store.create_post({**post, "id": "second-id", "image_file": post["image_file"]})
 
 
