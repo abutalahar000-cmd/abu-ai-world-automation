@@ -123,6 +123,11 @@ class Storage:
             "prompt_fingerprint": fields["prompt_fingerprint"],
             "caption_signature": fields["caption_signature"],
             "hashtag_signature": fields["hashtag_signature"],
+            "approved_at": fields.get("approved_at"),
+            "published_at": fields.get("published_at"),
+            "facebook_post_id": fields.get("facebook_post_id"),
+            "permalink": fields.get("permalink"),
+            "error": fields.get("error"),
         }
         columns = ", ".join(payload)
         placeholders = ", ".join(f":{name}" for name in payload)
