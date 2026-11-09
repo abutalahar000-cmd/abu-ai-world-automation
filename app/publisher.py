@@ -90,7 +90,7 @@ def update_post_content(
     return storage.get_post(post_id)
 
 
-def publish_post(storage, settings, post_id: str, client=None) -> dict:
+def publish_post(storage, settings, post_id: str, client=None, dry_run: bool = False) -> dict:
     """Publish one approved post to the configured Facebook Page."""
     post = storage.get_post(post_id)
     if post is None:
@@ -104,6 +104,17 @@ def publish_post(storage, settings, post_id: str, client=None) -> dict:
             "Facebook Page credentials are not configured. Set FB_PAGE_ID and "
             "FB_PAGE_ACCESS_TOKEN before publishing."
         )
+
+    if dry_run:
+        message = captioner.build_facebook_message(post)
+        graph = client or FacebookGraphClient(settings)
+        result = graph.dry_run_publish(post["image_path"], message)
+        result["checks"]["approved"] = post["status"] == "approved"
+        result["checks"]["require_approval"] = settings.require_approval
+        storage.add_event(
+            post_id, "publish_dry_run", "Dry run only: request validated, nothing sent"
+        )
+        return {"post": post, "dry_run": result}
 
     if settings.require_approval and post["status"] != "approved":
         raise PublishBlocked(

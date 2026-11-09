@@ -111,12 +111,30 @@ def cmd_reject(args) -> int:
 def cmd_publish(args) -> int:
     settings, store = _services()
     try:
-        post = publisher.publish_post(store, settings, args.post_id)
+        result = publisher.publish_post(
+            store, settings, args.post_id, dry_run=getattr(args, "dry_run", False)
+        )
     except publisher.PublishBlocked as exc:
         print(f"Blocked: {exc}", file=sys.stderr)
         return 2
+    if isinstance(result, dict) and result.get("dry_run"):
+        print(json.dumps(result["dry_run"], indent=2))
+        print("Dry run only: nothing was sent to Facebook.")
+        return 0
+    post = result
     print(f"Published: {post.get('permalink') or post.get('facebook_post_id')}")
     return 0
+
+
+def cmd_verify_providers(args) -> int:
+    settings, _ = _services()
+    from app import provider_check
+
+    names = [args.provider] if args.provider else None
+    reports = provider_check.check_all(settings, names)
+    print(json.dumps(reports, indent=2))
+    broken = [row["provider"] for row in reports if row["available"] and not row["ok"]]
+    return 1 if broken else 0
 
 
 def cmd_publish_approved(args) -> int:
@@ -195,6 +213,11 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("init-db", help="Create the SQLite database and media folder").set_defaults(func=cmd_init_db)
     sub.add_parser("categories", help="List photo categories").set_defaults(func=cmd_categories)
     sub.add_parser("providers", help="Show image provider status").set_defaults(func=cmd_providers)
+    verify = sub.add_parser(
+        "verify-providers", help="Call each image provider once and report what works"
+    )
+    verify.add_argument("--provider", default="", help="Check a single provider by name")
+    verify.set_defaults(func=cmd_verify_providers)
     sub.add_parser("stats", help="Show post counts and safe config status").set_defaults(func=cmd_stats)
     sub.add_parser("verify-facebook", help="Verify Page credentials with the Graph API").set_defaults(
         func=cmd_verify_facebook
@@ -229,6 +252,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     publish = sub.add_parser("publish", help="Publish one approved post")
     publish.add_argument("post_id")
+    publish.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate the Graph API request without publishing anything",
+    )
     publish.set_defaults(func=cmd_publish)
 
     bulk = sub.add_parser("publish-approved", help="Publish all approved posts")
