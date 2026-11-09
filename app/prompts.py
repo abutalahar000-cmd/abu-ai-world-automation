@@ -570,6 +570,28 @@ LIFESTYLE_SCENES = [
     "a window seat with a cup of tea",
 ]
 
+LIFESTYLE_DETAILS = [
+    "soft morning light across the scene",
+    "a warm cup of coffee in frame",
+    "an open book with a linen bookmark",
+    "fresh flowers in a ceramic vase",
+    "a rumpled linen throw",
+    "steam rising gently",
+    "everyday objects arranged naturally",
+    "a calm, lived-in atmosphere",
+]
+
+TRAVEL_DETAILS = [
+    "warm early light across the scene",
+    "local details and worn textures",
+    "a few distant travellers for scale",
+    "reflections in still water",
+    "colourful signage and fabrics",
+    "layered architecture in the background",
+    "a sense of scale and distance",
+    "atmospheric haze in the distance",
+]
+
 TRAVEL_SCENES = [
     "a sunrise over a Greek island harbour",
     "a lantern-lit alley in Kyoto",
