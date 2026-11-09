@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}{{ post.title }} · AI Photo Studio{% endblock %}
+{% block content %}
+  <p style="margin-bottom:14px"><a href="{{ url_for('index', status=post.status) }}">&larr; Back to {{ post.status }} queue</a></p>
+  <div class="detail-grid">
+    <div>
+      <div class="panel" style="padding:0; overflow:hidden">
+        <img src="{{ url_for('media', filename=post.image_file) }}" alt="{{ post.title }}"
+             style="width:100%; display:block; background:#0a0d11">
+      </div>
+      <div class="panel">
+        <h2>Prompt used</h2>
+        <p class="mono">{{ post.prompt }}</p>
+        <h2 style="margin-top:16px">Technical</h2>
+        <table>
+          <tr><th>Status</th><td><span class="badge {{ post.status }}">{{ post.status }}</span></td></tr>
+          <tr><th>Category</th><td>{{ post.category }}</td></tr>
+          <tr><th>Provider</th><td>{{ post.provider }}{% if post.provider == 'placeholder' %} (offline artwork){% endif %}</td></tr>
+          <tr><th>Seed</th><td class="mono">{{ post.seed }}</td></tr>
+          <tr><th>dHash</th><td class="mono">{{ post.phash }}</td></tr>
+          <tr><th>aHash</th><td class="mono">{{ post.ahash }}</td></tr>
+          <tr><th>SHA-256</th><td class="mono">{{ post.image_sha256[:32] }}…</td></tr>
+          <tr><th>Prompt fingerprint</th><td class="mono">{{ post.prompt_fingerprint[:24] }}…</td></tr>
+          <tr><th>Created</th><td class="mono">{{ post.created_at }}</td></tr>
+          {% if post.approved_at %}<tr><th>Approved</th><td class="mono">{{ post.approved_at }}</td></tr>{% endif %}
+          {% if post.published_at %}<tr><th>Published</th><td class="mono">{{ post.published_at }}</td></tr>{% endif %}
+        </table>
+        {% if post.permalink %}
+          <p style="margin-top:12px">Facebook: <a href="{{ post.permalink }}" rel="noopener noreferrer" target="_blank">{{ post.permalink }}</a></p>
+        {% endif %}
+        {% if post.error %}
+          <p style="color:#f87171; margin-top:12px">Last error: {{ post.error }}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2>Copy review</h2>
+        <form method="post" action="{{ url_for('edit', post_id=post.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <label for="title">Title</label>
+          <input id="title" name="title" type="text" value="{{ post.title }}" maxlength="200">
+          <label for="caption" style="margin-top:12px">Caption</label>
+          <textarea id="caption" name="caption">{{ post.caption }}</textarea>
+          <label for="hashtags" style="margin-top:12px">Hashtags (space separated)</label>
+          <input id="hashtags" name="hashtags" type="text" value="{{ post.hashtags | join(' ') }}">
+          <div style="margin-top:12px">
+            <button class="ghost" type="submit">Save copy</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h2>Actions</h2>
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
+          {% if post.status == 'pending' %}
+            <form method="post" action="{{ url_for('approve', post_id=post.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button class="ok" type="submit">Approve for publishing</button>
+            </form>
+            <form method="post" action="{{ url_for('reject', post_id=post.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button class="danger" type="submit">Reject</button>
+            </form>
+          {% elif post.status == 'approved' %}
+            <form method="post" action="{{ url_for('publish', post_id=post.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit">Publish to Facebook Page</button>
+            </form>
+            <form method="post" action="{{ url_for('reject', post_id=post.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button class="danger" type="submit">Reject</button>
+            </form>
+          {% elif post.status == 'failed' %}
+            <form method="post" action="{{ url_for('publish', post_id=post.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit">Retry publish</button>
+            </form>
+          {% endif %}
+          {% if post.status != 'published' %}
+            <form method="post" action="{{ url_for('delete', post_id=post.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button class="danger" type="submit">Delete photo</button>
+            </form>
+          {% endif %}
+        </div>
+        {% if not config_status.facebook_configured %}
+          <p class="muted" style="margin-top:12px; font-size:12.5px">
+            Publishing is disabled until FB_PAGE_ID and FB_PAGE_ACCESS_TOKEN are configured.
+          </p>
+        {% endif %}
+      </div>
+
+      <div class="panel">
+        <h2>Blueprint attributes</h2>
+        <table>
+          {% for key, value in post.blueprint.get('attributes', {}).items() %}
+            <tr><th>{{ key.replace('_', ' ') }}</th><td>{{ value }}</td></tr>
+          {% endfor %}
+        </table>
+      </div>
+    </div>
+  </div>
+{% endblock %}

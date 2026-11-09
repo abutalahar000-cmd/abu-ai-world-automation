@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Review queue · AI Photo Studio{% endblock %}
+{% block content %}
+  <h1>Photo review queue</h1>
+  <p class="lead">Generate unique AI photos, review them, then approve before anything reaches Facebook.</p>
+
+  {% if not config_status.require_approval %}
+    <div class="panel notice">
+      <strong>Approval mode is OFF.</strong> New photos are marked approved immediately because
+      <span class="mono">REQUIRE_APPROVAL=false</span>. Publishing still requires Facebook credentials
+      and <span class="mono">AUTO_PUBLISH=true</span> for unattended posting.
+    </div>
+  {% endif %}
+  {% if not config_status.facebook_configured %}
+    <div class="panel notice">
+      <strong>Facebook Page not connected.</strong> Publishing is disabled until
+      <span class="mono">FB_PAGE_ID</span> and <span class="mono">FB_PAGE_ACCESS_TOKEN</span> are set in the environment.
+      Missing: {{ config_status.facebook_missing | join(', ') }}.
+    </div>
+  {% endif %}
+
+  <div class="cards">
+    <div class="stat"><span>Pending</span><strong>{{ counts.pending }}</strong></div>
+    <div class="stat"><span>Approved</span><strong>{{ counts.approved }}</strong></div>
+    <div class="stat"><span>Published</span><strong>{{ counts.published }}</strong></div>
+    <div class="stat"><span>Rejected</span><strong>{{ counts.rejected }}</strong></div>
+    <div class="stat"><span>Failed</span><strong>{{ counts.failed }}</strong></div>
+    <div class="stat"><span>Total</span><strong>{{ counts.total }}</strong></div>
+  </div>
+
+  <div class="panel">
+    <h2>Generate new photos</h2>
+    <form class="inline" method="post" action="{{ url_for('generate') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div style="min-width:150px">
+        <label for="count">How many</label>
+        <input id="count" name="count" type="number" min="1" max="5" value="1">
+      </div>
+      <div style="min-width:190px">
+        <label for="category">Category</label>
+        <select id="category" name="category">
+          <option value="">Surprise me (random)</option>
+          {% for key, label in categories.items() %}
+            <option value="{{ key }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div style="min-width:190px">
+        <label for="provider">Image provider</label>
+        <select id="provider" name="provider">
+          <option value="">Default ({{ config_status.image_provider }})</option>
+          {% for provider in providers %}
+            <option value="{{ provider.name }}" {% if not provider.available %}disabled{% endif %}>
+              {{ provider.name }}{% if not provider.available %} — not configured{% endif %}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit">Generate &amp; queue</button>
+    </form>
+    <p class="muted" style="margin:12px 0 0; font-size:12.5px">
+      Every photo gets a fresh appearance, outfit, pose, background, camera angle, prompt fingerprint,
+      title, caption and hashtag set. Duplicates are rejected automatically.
+    </p>
+  </div>
+
+  <div class="tabs">
+    {% for state in ['pending', 'approved', 'published', 'rejected', 'failed', 'all'] %}
+      <a class="tab {% if status == state %}active{% endif %}" href="{{ url_for('index', status=state) }}">{{ state|capitalize }}</a>
+    {% endfor %}
+  </div>
+
+  {% if posts %}
+    <div class="grid cols">
+      {% for post in posts %}
+        <article class="post">
+          <a href="{{ url_for('post_detail', post_id=post.id) }}">
+            <img src="{{ url_for('media', filename=post.image_file) }}" alt="{{ post.title }}" loading="lazy">
+          </a>
+          <div class="body">
+            <div class="title">{{ post.title }}</div>
+            <div class="meta">
+              <span class="badge {{ post.status }}">{{ post.status }}</span>
+              <span>{{ post.category }}</span>
+              <span>{{ post.provider }}</span>
+              {% if post.provider == 'placeholder' %}<span class="badge">offline artwork</span>{% endif %}
+            </div>
+            <div class="actions">
+              <a class="button" href="{{ url_for('post_detail', post_id=post.id) }}">Review</a>
+              {% if post.status == 'pending' %}
+                <form method="post" action="{{ url_for('approve', post_id=post.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <button class="approve" type="submit">Approve</button>
+                </form>
+                <form method="post" action="{{ url_for('reject', post_id=post.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <button class="reject" type="submit">Reject</button>
+                </form>
+              {% elif post.status == 'approved' %}
+                <form method="post" action="{{ url_for('publish', post_id=post.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <button class="publish" type="submit">Publish</button>
+                </form>
+              {% endif %}
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="panel muted">No photos in this state yet. Generate one above to get started.</div>
+  {% endif %}
+
+  <div class="panel" style="margin-top:22px">
+    <h2>Configuration &amp; providers</h2>
+    <table>
+      <tr><th>Approval required</th><td>{{ config_status.require_approval }}</td></tr>
+      <tr><th>Auto publish</th><td>{{ config_status.auto_publish }}</td></tr>
+      <tr><th>Default provider</th><td>{{ config_status.image_provider }} (fallback: {{ config_status.fallback_provider }})</td></tr>
+      <tr><th>Facebook Page</th><td>{% if config_status.facebook_configured %}connected{% else %}not configured{% endif %}</td></tr>
+      <tr><th>Dashboard password</th><td>{{ 'set' if config_status.dashboard_password_set else 'not set' }}</td></tr>
+    </table>
+    <div class="taglist" style="margin-top:12px">
+      {% for provider in providers %}
+        <span>{{ provider.name }}{% if provider.selected %} · selected{% endif %}{% if not provider.available %} · unavailable{% endif %}</span>
+      {% endfor %}
+    </div>
+    {% if config_status.facebook_configured %}
+      <form method="post" action="{{ url_for('verify_facebook') }}" style="margin-top:14px">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="ghost" type="submit">Test Facebook connection</button>
+      </form>
+    {% endif %}
+  </div>
+
+  {% if events %}
+    <div class="panel">
+      <h2>Recent activity</h2>
+      <table>
+        <tr><th>When</th><th>Event</th><th>Details</th></tr>
+        {% for event in events %}
+          <tr>
+            <td class="muted mono">{{ event.created_at }}</td>
+            <td>{{ event.kind }}</td>
+            <td>{{ event.message }}</td>
+          </tr>
+        {% endfor %}
+      </table>
+    </div>
+  {% endif %}
+{% endblock %}
