@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import requests
 
+from app import quality
 from app.providers.base import ImageProvider, ImageRequest, ImageResult, ProviderError
 
 DEFAULT_ENDPOINT = "https://router.huggingface.co/hf-inference/models"
@@ -58,9 +59,19 @@ class HuggingFaceProvider(ImageProvider):
         if not content_type.startswith("image/"):
             raise ProviderError("Hugging Face returned a non-image response (check model access).")
 
+        try:
+            measured = quality.validate_photo(response.content, provider=self.name)
+        except quality.ImageValidationError as exc:
+            raise ProviderError(str(exc)) from exc
+
         return ImageResult(
             data=response.content,
             provider=self.name,
             mime=content_type.split(";")[0] or "image/png",
-            meta={"model": self.settings.hf_model, "seed": request.seed},
+            meta={
+                "model": self.settings.hf_model,
+                "seed": request.seed,
+                "is_ai": True,
+                "quality": measured.to_dict(),
+            },
         )

@@ -33,6 +33,10 @@ class ImageProvider(ABC):
     name = "base"
     requires_credentials = False
     notes = ""
+    #: True when the backend is a diffusion/AI model rather than offline artwork.
+    is_ai = True
+    #: True only for the offline procedural backend.
+    is_placeholder = False
 
     def __init__(self, settings) -> None:
         self.settings = settings
@@ -46,6 +50,8 @@ class ImageProvider(ABC):
             "available": self.available(),
             "requires_credentials": self.requires_credentials,
             "notes": self.notes,
+            "is_ai": self.is_ai,
+            "is_placeholder": self.is_placeholder,
             "selected": self.name == self.settings.image_provider,
         }
 

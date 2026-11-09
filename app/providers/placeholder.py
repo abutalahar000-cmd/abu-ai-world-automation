@@ -33,6 +33,8 @@ class PlaceholderProvider(ImageProvider):
     name = "placeholder"
     requires_credentials = False
     notes = "Offline procedural artwork for testing the pipeline. Not a photograph."
+    is_ai = False
+    is_placeholder = True
 
     def generate(self, request: ImageRequest) -> ImageResult:
         rng = random.Random(request.seed or 0)

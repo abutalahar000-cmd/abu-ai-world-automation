@@ -11,6 +11,7 @@ import binascii
 
 import requests
 
+from app import quality
 from app.providers.base import ImageProvider, ImageRequest, ImageResult, ProviderError
 
 
@@ -54,9 +55,19 @@ class LocalStableDiffusionProvider(ImageProvider):
         if len(data) < 5_000:
             raise ProviderError("Local Stable Diffusion returned an empty image.")
 
+        try:
+            measured = quality.validate_photo(data, provider=self.name)
+        except quality.ImageValidationError as exc:
+            raise ProviderError(str(exc)) from exc
+
         return ImageResult(
             data=data,
             provider=self.name,
             mime="image/png",
-            meta={"model": "local", "seed": request.seed},
+            meta={
+                "model": "local",
+                "seed": request.seed,
+                "is_ai": True,
+                "quality": measured.to_dict(),
+            },
         )

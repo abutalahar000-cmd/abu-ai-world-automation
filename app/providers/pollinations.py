@@ -10,6 +10,7 @@ from urllib.parse import quote
 
 import requests
 
+from app import quality
 from app.providers.base import ImageProvider, ImageRequest, ImageResult, ProviderError
 
 BASE_URL = "https://image.pollinations.ai/prompt/"
@@ -54,9 +55,19 @@ class PollinationsProvider(ImageProvider):
         if len(data) < MIN_BYTES:
             raise ProviderError("Pollinations returned an unexpectedly small image.")
 
+        try:
+            measured = quality.validate_photo(data, provider=self.name)
+        except quality.ImageValidationError as exc:
+            raise ProviderError(str(exc)) from exc
+
         return ImageResult(
             data=data,
             provider=self.name,
             mime=content_type.split(";")[0] or "image/jpeg",
-            meta={"model": params["model"], "seed": request.seed},
+            meta={
+                "model": params["model"],
+                "seed": request.seed,
+                "is_ai": True,
+                "quality": measured.to_dict(),
+            },
         )
