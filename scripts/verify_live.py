@@ -31,6 +31,12 @@ DEFAULT_CATEGORIES = ["girls", "boys", "fashion", "travel", "food"]
 LIVE_SIZE = 768
 
 
+def _tags(post: dict) -> list[str]:
+    """Hashtags are stored as a list in memory and as JSON text in SQLite."""
+    tags = post["hashtags"]
+    return tags if isinstance(tags, list) else json.loads(tags)
+
+
 def _live_settings(tmp: Path, provider: str = "pollinations"):
     base = config.load_settings()
     return dataclasses.replace(
@@ -47,13 +53,16 @@ def _live_settings(tmp: Path, provider: str = "pollinations"):
 
 
 def main(argv: list[str]) -> int:
-    categories = argv[1:] or DEFAULT_CATEGORIES
-    summary: dict = {"providers": [], "categories": [], "dedupe": {}, "facebook": {}}
+    args = [arg for arg in argv[1:] if not arg.startswith("-")]
+    categories = args or DEFAULT_CATEGORIES
+    provider = "placeholder" if "--placeholder" in argv[1:] else "pollinations"
+    summary: dict = {"provider": provider, "providers": [], "categories": [], "dedupe": {}, "facebook": {}}
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
-        settings = _live_settings(tmp)
+        settings = _live_settings(tmp, provider)
         store = storage_module.Storage(settings.database_path, settings.media_dir)
+        print(f"== image provider for generation: {provider} ==")
 
         print("== provider status (configuration) ==")
         for row in provider_status(settings):
@@ -105,7 +114,7 @@ def main(argv: list[str]) -> int:
                     "detail": measured.detail,
                     "title": post["title"],
                     "caption_chars": len(post["caption"]),
-                    "hashtags": len(json.loads(post["hashtags"])),
+                    "hashtags": len(_tags(post)),
                     "sha256": post["image_sha256"][:16],
                 }
             )
@@ -116,7 +125,7 @@ def main(argv: list[str]) -> int:
             )
             print(f"             title: {post['title']}")
             print(f"             caption: {post['caption'][:110]}...")
-            print(f"             hashtags: {' '.join(json.loads(post['hashtags']))}")
+            print(f"             hashtags: {' '.join(_tags(post))}")
             time.sleep(2)
 
         if len(posts) >= 2:
