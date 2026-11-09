@@ -142,6 +142,7 @@ def generate_post(
             "blueprint": blueprint.to_dict(),
             "seed": blueprint.seed,
             "provider": result.provider,
+            "is_placeholder": bool(result.meta.get("placeholder")),
             "image_path": str(image_path),
             "image_sha256": hashes["sha256"],
             "phash": hashes["dhash"],
@@ -160,6 +161,8 @@ def generate_post(
             raise
 
         note = f"Generated {blueprint.category} photo via {result.provider}"
+        if result.meta.get("placeholder"):
+            note += " (PLACEHOLDER artwork - not a real AI photo)"
         if problems:
             note += f" (fallback after: {'; '.join(problems)})"
         storage.add_event(post_id, "generated", note)
