@@ -30,11 +30,22 @@ SCENE_CATEGORIES = ("food", "nature", "architecture")
 MIX_PROBABILITY = {"lifestyle": 0.65, "travel": 0.55}
 
 NEGATIVE_PROMPT = (
+    "child, kid, teenager, minor, school uniform, baby face, doll, mannequin, "
+    "statue, wax figure, cgi, video game character, painting, drawing, sketch, "
+    "anime, cartoon, illustration, 3d render, plastic skin, waxy skin, "
     "text, letters, watermark, logo, signature, caption overlay, deformed hands, "
     "extra fingers, extra limbs, fused fingers, distorted face, crossed eyes, "
-    "bad anatomy, plastic skin, waxy skin, blurry, low resolution, jpeg artifacts, "
-    "cartoon, anime, illustration, 3d render, duplicate subject, cropped head, "
-    "oversaturated, airbrushed, uncanny"
+    "bad anatomy, blurry, low resolution, jpeg artifacts, duplicate subject, "
+    "cloned face, two heads, cropped head, oversaturated, airbrushed, uncanny"
+)
+
+# Appended to every prompt. Keeps output photographic and explicitly adult.
+REALISM_SUFFIX = (
+    "Shot on a full-frame camera with a fast prime lens: natural skin with visible "
+    "pores, fine lines and realistic texture, anatomically correct hands, "
+    "true-to-life proportions, individual strands of hair, shallow depth of field, "
+    "documentary realism. Not a render, not an illustration, no text, no watermark, "
+    "no logo."
 )
 
 # ---------------------------------------------------------------------------
@@ -711,9 +722,9 @@ def render_person_prompt(attributes: dict) -> str:
     """Compose a photorealistic person prompt from sampled attributes."""
     heritage = attributes["heritage"]
     gender = attributes["gender"]
-    subject = f"{article_for(heritage)} {heritage} {gender} {attributes['age']}"
+    subject = f"{article_for(heritage)} {heritage} adult {gender} {attributes['age']}"
     return (
-        f"Photorealistic editorial photograph of {subject}.\n"
+        f"Photorealistic candid editorial photograph of {subject}, a real adult person.\n"
         f"Appearance: {attributes['hair_style']} in {attributes['hair_color']}, "
         f"{attributes['eyes']}, {attributes['face']}, {attributes['build']}, "
         f"{attributes['expression']}.\n"
@@ -723,8 +734,7 @@ def render_person_prompt(attributes: dict) -> str:
         f"Camera: {attributes['camera_angle']}, {attributes['lens']}.\n"
         f"Light: {attributes['lighting']}, {attributes['time_of_day']}.\n"
         f"Look: {attributes['color_grade']}, {attributes['aesthetic']}.\n"
-        "Ultra-detailed, natural skin texture, realistic anatomy and proportions, "
-        "sharp focus, professional photography, no text, no watermark, no logo."
+        f"{REALISM_SUFFIX}"
     )
 
 
@@ -746,7 +756,7 @@ def render_scene_prompt(attributes: dict, category: str) -> str:
             f"Camera: {attributes['camera_angle']}, {attributes['lens']}.",
             f"Light: {attributes['lighting']}, {attributes['time_of_day']}.",
             f"Look: {attributes['color_grade']}, {attributes['aesthetic']}.",
-            "Ultra-detailed, professional photography, no text, no watermark, no logo.",
+            REALISM_SUFFIX,
         ]
     )
     return "\n".join(lines)

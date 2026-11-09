@@ -99,3 +99,47 @@ class FacebookGraphClient:
             "permalink": f"https://www.facebook.com/{photo_id}" if photo_id else "",
             "payload": payload,
         }
+
+    def build_photo_request(self, image_path: str | Path, message: str) -> dict:
+        """Describe the exact upload request without sending it.
+
+        Used by dry-run mode so the integration can be verified without
+        publishing a real post.
+        """
+        self._require_credentials()
+        path = Path(image_path)
+        if not path.exists():
+            raise FacebookError(f"Image file is missing: {path.name}")
+        return {
+            "method": "POST",
+            "url": f"{self.base_url}/{self.settings.fb_page_id}/photos",
+            "fields": {
+                "message": message,
+                "published": "true",
+                "access_token": "<redacted>",
+            },
+            "file": {
+                "field": "source",
+                "name": path.name,
+                "mime": "image/jpeg",
+                "bytes": path.stat().st_size,
+            },
+        }
+
+    def dry_run_publish(self, image_path: str | Path, message: str) -> dict:
+        """Validate a publish locally. Never contacts Facebook."""
+        request = self.build_photo_request(image_path, message)
+        return {
+            "dry_run": True,
+            "sent": False,
+            "request": request,
+            "checks": {
+                "credentials_present": bool(
+                    self.settings.fb_page_id and self.settings.fb_page_access_token
+                ),
+                "image_exists": Path(image_path).exists(),
+                "image_not_empty": request["file"]["bytes"] > 0,
+                "message_not_empty": bool(message.strip()),
+                "message_within_limit": len(message) <= 63_206,
+            },
+        }

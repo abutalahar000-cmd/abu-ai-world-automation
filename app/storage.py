@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS posts (
     blueprint TEXT NOT NULL,
     seed INTEGER NOT NULL DEFAULT 0,
     provider TEXT NOT NULL DEFAULT '',
+    is_placeholder INTEGER NOT NULL DEFAULT 0,
     image_path TEXT NOT NULL,
     image_sha256 TEXT NOT NULL,
     phash TEXT NOT NULL,
@@ -66,6 +67,7 @@ EDITABLE_COLUMNS = {
     "permalink",
     "error",
     "provider",
+    "is_placeholder",
 }
 
 STATUSES = ("pending", "approved", "rejected", "published", "failed")
@@ -97,6 +99,24 @@ class Storage:
     def init_db(self) -> None:
         with closing(self.connect()) as connection, connection:
             connection.executescript(SCHEMA)
+            self._migrate(connection)
+
+    @staticmethod
+    def _migrate(connection: sqlite3.Connection) -> None:
+        """Add columns introduced after the first release.
+
+        ``CREATE TABLE IF NOT EXISTS`` never alters an existing table, so older
+        databases need the new columns added explicitly.
+        """
+        existing = {row["name"] for row in connection.execute("PRAGMA table_info(posts)")}
+        additions = {
+            "is_placeholder": (
+                "ALTER TABLE posts ADD COLUMN is_placeholder INTEGER NOT NULL DEFAULT 0"
+            ),
+        }
+        for column, statement in additions.items():
+            if column not in existing:
+                connection.execute(statement)
 
     # -- posts -----------------------------------------------------------
     def create_post(self, fields: dict) -> str:
@@ -116,6 +136,7 @@ class Storage:
             "blueprint": json.dumps(fields.get("blueprint", {}), ensure_ascii=False),
             "seed": int(fields.get("seed", 0)),
             "provider": fields.get("provider", ""),
+            "is_placeholder": 1 if fields.get("is_placeholder") else 0,
             "image_path": fields["image_path"],
             "image_sha256": fields["image_sha256"],
             "phash": fields["phash"],
