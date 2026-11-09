@@ -53,7 +53,7 @@ class Blueprint:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Blueprint":
+    def from_dict(cls, data: dict) -> Blueprint:
         category = data.get("category", "lifestyle")
         attributes = data.get("attributes", {})
         return cls(

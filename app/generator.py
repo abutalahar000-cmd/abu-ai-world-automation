@@ -11,7 +11,8 @@ from pathlib import Path
 
 from PIL import Image, ImageOps
 
-from app import captioner, dedupe, providers, randomizer, storage as storage_module
+from app import captioner, dedupe, providers, randomizer
+from app import storage as storage_module
 
 LOGGER = logging.getLogger(__name__)
 

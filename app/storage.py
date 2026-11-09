@@ -6,7 +6,7 @@ import json
 import sqlite3
 import uuid
 from contextlib import closing
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from app import dedupe
@@ -72,7 +72,7 @@ STATUSES = ("pending", "approved", "rejected", "published", "failed")
 
 
 def utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 class Storage:

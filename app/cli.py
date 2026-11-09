@@ -15,7 +15,8 @@ import argparse
 import json
 import sys
 
-from app import captioner, config, generator, prompts, providers, publisher, scheduler, storage as storage_module
+from app import config, generator, prompts, providers, publisher, scheduler
+from app import storage as storage_module
 
 
 def _services():

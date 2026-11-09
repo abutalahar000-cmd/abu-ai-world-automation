@@ -7,7 +7,6 @@ support can add a hook line, but the deterministic template path always works.
 from __future__ import annotations
 
 import hashlib
-import json
 import random
 import re
 

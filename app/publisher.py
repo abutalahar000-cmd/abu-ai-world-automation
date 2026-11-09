@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 
-from app import captioner, storage as storage_module
+from app import captioner
+from app import storage as storage_module
 from app.facebook import FacebookError, FacebookGraphClient
 
 LOGGER = logging.getLogger(__name__)

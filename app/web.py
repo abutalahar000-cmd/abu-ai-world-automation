@@ -24,7 +24,8 @@ from flask import (
     url_for,
 )
 
-from app import captioner, config, generator, prompts, providers, publisher, storage as storage_module
+from app import config, generator, prompts, providers, publisher
+from app import storage as storage_module
 from app.facebook import FacebookError, FacebookGraphClient
 
 

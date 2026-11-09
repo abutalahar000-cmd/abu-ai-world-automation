@@ -60,8 +60,9 @@ def test_generate_approve_and_blocked_publish(settings, store):
 
 
 def test_media_route_serves_generated_photo(settings, store):
-    from app import generator
     import random
+
+    from app import generator
 
     post = generator.generate_post(store, settings, rng=random.Random(1))
     client = _client(settings)
@@ -72,8 +73,9 @@ def test_media_route_serves_generated_photo(settings, store):
 
 
 def test_reject_and_edit_actions(settings, store):
-    from app import generator
     import random
+
+    from app import generator
 
     post = generator.generate_post(store, settings, rng=random.Random(2))
     client = _client(settings)
