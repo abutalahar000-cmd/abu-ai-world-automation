@@ -112,4 +112,9 @@ def test_generation_continues_after_a_provider_failure(store, settings, monkeypa
 
     monkeypatch.setattr(generator.providers, "get_provider", flaky)
     outcome = generator.generate_batch(store, settings, count=2, rng=random.Random(21))
-    assert len(outcome.created) == 2
+    # The configured provider and its fallback are the same backend here, so the
+    # failing post is reported instead of crashing the batch, and the next post
+    # still succeeds.
+    assert len(outcome.created) == 1
+    assert len(outcome.errors) == 1
+    assert store.counts()["total"] == 1

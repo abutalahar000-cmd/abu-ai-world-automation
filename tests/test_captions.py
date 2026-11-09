@@ -8,11 +8,39 @@ from app import captioner, randomizer
 
 
 def _copy(store, settings, category="travel", seed=99, count=1):
+    """Generate copy the way the pipeline does: each post is persisted, so the
+    next call's uniqueness checks see everything already used."""
     rng = random.Random(seed)
     results = []
-    for _ in range(count):
+    for index in range(count):
         blueprint = randomizer.build_unique_blueprint(store, category=category, rng=rng)
-        results.append(captioner.create_caption(store, blueprint, settings=settings, rng=rng))
+        copy = captioner.create_caption(store, blueprint, settings=settings, rng=rng)
+        store.create_post(
+            {
+                "category": category,
+                "title": copy["title"],
+                "caption": copy["caption"],
+                "hashtags": copy["hashtags"],
+                "prompt": blueprint.prompt,
+                "negative_prompt": blueprint.negative_prompt,
+                "blueprint": {
+                    "category": blueprint.category,
+                    "kind": blueprint.kind,
+                    "seed": blueprint.seed,
+                    "attributes": blueprint.attributes,
+                },
+                "seed": blueprint.seed,
+                "provider": "test",
+                "image_path": f"media/test-{seed}-{index}.jpg",
+                "image_sha256": f"{seed}{index}".ljust(64, "0"),
+                "phash": f"{seed}{index}".ljust(16, "0"),
+                "ahash": f"{seed}{index}".ljust(16, "0"),
+                "prompt_fingerprint": blueprint.fingerprint,
+                "caption_signature": copy["caption_signature"],
+                "hashtag_signature": copy["hashtag_signature"],
+            }
+        )
+        results.append(copy)
     return results
 
 
